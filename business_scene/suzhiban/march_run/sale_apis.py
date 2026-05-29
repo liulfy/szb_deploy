@@ -1,0 +1,337 @@
+
+import time
+import json
+import requests
+
+from business_scene.suzhiban.utils.utils import find_closest_string
+from model_api.doubao_seed_2_lite import query_doubao_stream
+
+session = requests.session()
+from business_scene.suzhiban.goods_judgement.goods_judgement import run_goods_judgement_new
+from business_scene.suzhiban.march_run.new_sale_api import get_sales_new
+
+def get_sales(accNum: str, regionId: str, prodId: str) -> dict:
+    accNum = str(accNum)
+    regionId = str(regionId)
+    prodId = str(prodId)
+    url = "http://jsjteop.telecomjs.com:8764/jseop/crm_saop/js_xw_ry_penaltyTrialForExoSystem"
+    headers = {
+        "X-APP-ID": "b8c2e5dcfe54af717e669739e5790478",
+        "X-APP-KEY": "467a04de96967045d75f8d06bec20e8c",
+        "appKey": "JS00000001",
+        "regionId": regionId,
+        "Content-Type": "application/json"
+    }
+    data = {
+        "requestObject": {
+            "accNum": accNum,
+            "prodId": prodId
+        }
+    }
+    body = ''
+    i = 0
+    while i < 10:
+        i += 1
+        try:
+            res = session.post(url=url, json=data, headers=headers)
+            res.raise_for_status()  # 检查请求是否成功
+            body = res.text
+        except requests.RequestException as e:
+            body = ""
+            time.sleep(0.5)
+        if body:
+            break
+    if not body:
+        return {}
+    res = json.loads(body)['resultObject']['msg']
+    if not isinstance(res, dict): #表明不是违约金争议，需要去查渠道
+        return {}
+    return res
+
+
+def get_channel_step_1(regionId: str, objId: str) -> dict:
+    regionId = str(regionId)
+    objId = str(objId)
+    regionId = regionId.replace("\n", "").replace(" ", "")
+    objId = objId.replace("\n", "").replace(" ", "")
+    url = "http://jsjteop.telecomjs.com:8764/jseop/crm_saop/js_xw_ry_qryCustomerOrder"
+    # url = "http://jsjteop.telecomjs.com:8764/jseop/crm_saop/js_xw_ry_qryCustomerOrderIncludeHis"
+    headers = {
+        "X-APP-ID": "a784f3c54e37e8ac27bb0e85b05bb9cf",
+        "X-APP-KEY": "fb3273de7f400db0f495c3c6f093565a",
+        "regionId": regionId,
+        "appKey": "JS00000087"
+    }
+    data = {
+        "requestObject": {
+            "acceptLanId": regionId,
+            "objId": objId,
+            "pageInfo": {
+                "pageIndex": "1",
+                "pageSize": "10"
+            },
+            "scopeInfos": [
+                {"scope": "customerOrder"},
+                {"scope": "orderItem"},
+                {"scope": "ordDevStaffInfo"}],
+            "serviceOfferIds": [3010100000, 3020400001,3020200000]
+        }
+    }
+
+    data = json.dumps(data)
+    body = ''
+    i = 0
+    while i < 10:
+        i += 1
+        try:
+            data = json.dumps(data)
+            res = session.get(url=url, data=data, headers=headers, timeout=300)
+            # res = session.post(url=url, data=data, headers=headers, timeout=300)
+            body = res.text
+        except Exception as e:
+            print(e)
+            body = ""
+            time.sleep(0.5)
+        if body:
+            break
+
+    return body
+
+
+import json
+import requests
+session = requests.session()
+import time
+def get_channel_step_1_new(regionid:str,objId:str,proid) -> dict:
+    regionid = str(regionid)
+    objId = str(objId)
+    proid = str(proid)
+    url = "http://jsjteop.telecomjs.com:8764/jseop/crm_saop/js_xw_ry_qryCustomerOrderIncludeHis"
+
+    headers = {
+        "X-APP-ID": "8cdd0030e55d453186bc21d89be4df47",
+        "X-APP-KEY": "35da7ab7f31eb1341072b0e1247a2824",
+        "regionId": regionid,
+        "appKey": "JS00000196",
+        "Content-Type": "application/json",
+    }
+
+    data = {
+        "requestObject": {
+            "isQryHis": "1",
+            "acceptLanId": regionid,
+            #"custOrderNbr": objId,
+            "accNbr": objId,
+            "applyObjSpecs": [proid],
+            "pageInfo": {
+                "pageIndex": "1",
+                "pageSize": "10"
+            },
+            "scopeInfos": [
+                {"scope": "customerOrder"},
+                {"scope": "orderItem"},
+                {"scope": "ordDevStaffInfo"}],
+            "serviceOfferIds": [3010100000, 3020400001,3020200000]
+        }
+    }
+    i = 0
+    while i < 10:
+        i += 1
+        try:
+            data = json.dumps(data)
+            res = session.post(url=url, data=data,headers=headers)
+            body = res.text
+        except Exception as e:
+            print(e)
+            body = ""
+            time.sleep(0.5)
+        if body:
+            break
+    return body
+
+
+def get_channel_step_2_back(channelId: str):
+    channelId = str(channelId)
+    url = "http://openapi.telecomjs.com:80/eop/yunque/getChannel/getChannel"
+    headers = {
+        "X-APP-ID": "3164a47587b94cd69789fdd67092d390",
+        "X-APP-KEY": "51b78cb74cf34ba8ab5d5e24e5172174",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "channelId": channelId
+    }
+    try:
+        # data = json.dumps(data)
+        res = requests.post(url=url,headers=headers,json=data)
+        body = res.text
+        # body = str(data)
+    except Exception as e:
+        body = str(e)
+    return {"result": body}
+
+
+def get_channel_step_2(createOrgId):
+    # 请求地址
+    url = "http://132.254.20.222:30050/v1/chat-messages"
+
+    # 请求头
+    headers = {
+        "Authorization": "Bearer app-MGP4HWJ7BlonFrqVpEr0R7kX",
+        "Content-Type": "application/json"
+    }
+
+    # 请求体（和原 curl --data-raw 完全一致）
+    data = {
+        "input_data": {
+            "channelId": str(createOrgId)
+        },
+        # "channelId": str(createOrgId),
+        "query": "1",
+        "mode": "blocking",
+        "user": "yian"
+    }
+
+    # 发送 POST 请求
+    response = requests.post(url, headers=headers, json=data).text
+    response = json.loads(response)
+    answer = json.loads(response['answer'])
+    return answer
+
+
+# 销售品匹配
+def match_sales(complaint_clause, sales, inst_ids):
+    matched_sales = {}
+    # if not is_new:
+    #     items = queried_sales['chargeItems']
+    #     for i in items:
+    #         try:
+    #             matched_sales[i['objName']] = i['offerInstId']
+    #         except Exception as e:
+    #             continue
+    #     complaint_sale = complaint_clause
+    # else:
+    data_size = len(sales)
+    for i in range(data_size):
+        matched_sales[sales[i]] = inst_ids[i]
+
+    prompt = f"你将会给到用户的投诉内容和投诉品列表。请分析用户的投诉内容，与哪个投诉品最匹配（语义和文字表述都必须匹配）。如果你认为没有匹配的投诉品，请输出'没有匹配的投诉品'。请你输出投诉品列表中对应的投诉品，不需要输出其它任何内容。\n" \
+             f"投诉品列表为：{sales}\n\n\n" \
+             f"用户的投诉内容为：{complaint_clause}"
+    complaint_sale = query_doubao_stream(prompt, 20, "enabled")
+    print(f"complaint_sale: {complaint_sale}")
+
+    try:
+        matched_sale = find_closest_string(complaint_sale, matched_sales, 4)
+        offerInstId = matched_sales.get(matched_sale, ' ')
+        return matched_sale, offerInstId
+    except Exception as e:
+        return ' ', ' '
+
+# accNum: prod_num_new
+# prodId:
+
+def run_pipeline(identity_num, complaint_clause, accNum, region, prod_one_desc):
+    prodId, regionId = get_sale_info(region, prod_one_desc)
+    sale_res = get_sales_new(accNum, regionId, prodId)
+    sales = sale_res[0]
+    inst_ids = sale_res[1]
+    if not sales:
+        return "无法判断", '没有销售品订购记录'
+    matched_sale, offerInstId = match_sales(complaint_clause, sales, inst_ids)
+    if matched_sale == ' ':
+        return "无法判断", f'no match {complaint_clause}'
+            # matched_sale = complaint_sale
+    # weiyuejin_sales = get_sales(accNum, regionId, prodId)
+    # if weiyuejin_sales: #走违约金
+    #     return run_goods_judgement_new(complaint_clause, sales, region), '违约金'
+
+    # 先走违约金，没有违约金再走否认订购
+    weiyuej_res = run_goods_judgement_new(complaint_clause, matched_sale, sales, region)
+    if weiyuej_res != '无法判断':
+        return weiyuej_res, f'违约金。匹配到：{matched_sale}'
+    try:
+
+        # res_1 = get_channel_step_1(regionId, offerInstId)
+        print([regionId, offerInstId, prodId])
+        res_1 = get_channel_step_1_new(regionId, offerInstId, prodId)
+        print(res_1)
+        try:
+            createOrgId = res_1['resultObject']['customerOrders'][0]['customerOrder']['createOrgId']
+        except Exception as e:
+            res_1 = get_channel_step_1(regionId, offerInstId)
+            createOrgId = res_1['resultObject']['customerOrders'][0]['customerOrder']['createOrgId']
+        res = get_channel_step_2(createOrgId)
+        res = json.loads(res)
+        res = res['body']['item']['ecsChannelTypeName']
+        if '地市' in res:
+            return '下派', f'渠道。匹配到：{matched_sale}'
+        return '不下派', f'渠道。匹配到：{matched_sale}'
+    except Exception as e:
+        pass
+        # return '无法判断', '渠道'
+
+    return '无法判断', f'渠道+违约金均无匹配。匹配到：{matched_sale}'
+
+
+def get_channel_step_2(createOrgId):
+    # 请求地址
+    url = "http://132.254.20.222:30050/v1/chat-messages"
+
+    # 请求头
+    headers = {
+        "Authorization": "Bearer app-MGP4HWJ7BlonFrqVpEr0R7kX",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "input_data": {
+            "channelId": str(createOrgId)
+        },
+        # "channelId": str(createOrgId),
+        "query": "1",
+        "mode": "blocking",
+        "user": "yian"
+    }
+
+    # 发送 POST 请求
+    response = requests.post(url, headers=headers, json=data).text
+    response = json.loads(response)
+    answer = json.loads(response['answer'])
+    return answer
+
+
+
+
+
+RES_JSON = {
+    "手机":"100000379",
+    "普通电话":"100000002",
+    "宽带":"100000009",
+    "翼支付": "200001144",
+    "智慧家庭": "100001090",
+    "天翼高清":"100001037"
+}
+
+city_region_map = {
+    "南京市": 8320100,
+    "无锡": 8320200,
+    "镇江": 8321100,
+    "苏州": 8320500,
+    "南通": 8320600,
+    "扬州": 8321000,
+    "盐城": 8320900,
+    "徐州": 8320300,
+    "淮安": 8320800,
+    "连云港": 8320700,
+    "常州": 8320400,
+    "泰州": 8321200,
+    "宿迁": 8321300,
+    "其他": 8320000
+}
+
+
+def get_sale_info(region, prod_one_desc):
+    return RES_JSON[prod_one_desc], city_region_map[region]
+
+
