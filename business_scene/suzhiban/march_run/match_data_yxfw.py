@@ -10,6 +10,7 @@ import random
 from business_scene.check_data import analysis_data
 from business_scene.check_data import run_inference
 from business_scene.suzhiban.complaint_judge_front.run_complaint_judge_front_new import front_complaint
+from business_scene.suzhiban.complaint_judge_front.complaint_rules import yxfw_company_scene, yxfw_province_scene
 from business_scene.suzhiban.march_run.sale_apis import run_pipeline
 from business_scene.suzhiban.march_run.rules_save import yxfw_rule_set, ktty_rule_set
 
@@ -37,7 +38,7 @@ def get_result(identity_num, rough_result):
 
 def run_total_inference(identity_num, region, extract_content, prod_one_desc, prod_num_new, rule_set):
     def _run_1(identity_num, result, extract_content, index1, index2):
-        this_result, reason = front_complaint(extract_content)
+        this_result, reason = front_complaint(extract_content, yxfw_province_scene, yxfw_company_scene)
         result[index1] = get_result(identity_num, this_result)
         result[index2] = reason
     def _run_2(identity_num, result, region, extract_content, index1, index2):
